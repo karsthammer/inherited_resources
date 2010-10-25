@@ -5,7 +5,7 @@
 
 Gem::Specification.new do |s|
   s.name = %q{karsthammer-inherited_resources}
-  s.version = "1.1.2"
+  s.version = "1.1.2.1"
 
   s.required_rubygems_version = Gem::Requirement.new(">= 0") if s.respond_to? :required_rubygems_version=
   s.authors = ["Jos\303\251 Valim", "Karst Hammer"]
@@ -23,7 +23,7 @@ Gem::Specification.new do |s|
      "lib/generators/rails/USAGE",
      "lib/generators/rails/inherited_resources_controller_generator.rb",
      "lib/generators/rails/templates/controller.rb",
-     "lib/inherited_resources.rb",
+     "lib/karsthammer-inherited_resources.rb",
      "lib/inherited_resources/actions.rb",
      "lib/inherited_resources/base.rb",
      "lib/inherited_resources/base_helpers.rb",
