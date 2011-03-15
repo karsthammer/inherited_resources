@@ -26,9 +26,10 @@ require 'inherited_resources'
 ActionController::Base.view_paths = File.join(File.dirname(__FILE__), 'views')
 
 InheritedResources::Routes = ActionDispatch::Routing::RouteSet.new
-InheritedResources::Routes.draw do |map|
-  map.connect ':controller/:action/:id'
-  map.connect ':controller/:action'
+InheritedResources::Routes.draw do
+  match ':controller(/:action(/:id))'
+  match ':controller(/:action)'
+  resources 'posts'
 end
 
 ActionController::Base.send :include, InheritedResources::Routes.url_helpers

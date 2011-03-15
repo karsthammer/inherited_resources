@@ -6,6 +6,7 @@ module InheritedResources
   autoload :Actions,            'inherited_resources/actions'
   autoload :Base,               'inherited_resources/base'
   autoload :BaseHelpers,        'inherited_resources/base_helpers'
+  autoload :ShallowHelpers,     'inherited_resources/shallow_helpers'
   autoload :BelongsToHelpers,   'inherited_resources/belongs_to_helpers'
   autoload :ClassMethods,       'inherited_resources/class_methods'
   autoload :DSL,                'inherited_resources/dsl'
@@ -21,7 +22,11 @@ module InheritedResources
 
   class Railtie < ::Rails::Railtie
     config.inherited_resources = InheritedResources
-    config.generators.scaffold_controller = :inherited_resources_controller
+    if config.respond_to?(:app_generators)
+      config.app_generators.scaffold_controller = :inherited_resources_controller
+    else
+      config.generators.scaffold_controller = :inherited_resources_controller
+    end
   end
 end
 

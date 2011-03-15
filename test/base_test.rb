@@ -29,34 +29,40 @@ module UserTestHelper
   end
 
   protected
-  
-    def mock_user(expectations={})
-      @mock_user ||= begin
-        user = mock(expectations.except(:errors))
-        user.stubs(:class).returns(User)
-        user.stubs(:errors).returns(expectations.fetch(:errors, {})) 
-        user
+
+  def mock_user(expectations={})
+    @mock_user ||= begin
+      user = mock(expectations.except(:errors))
+      user.stubs(:class).returns(User)
+      user.stubs(:errors).returns(expectations.fetch(:errors, {}))
+      user.singleton_class.class_eval do
+        def method_missing(symbol, *arguments, &block)
+          raise NoMethodError.new('this is expected by Array#flatten') if symbol == :to_ary
+          super
+        end
       end
+      user
     end
+  end
 end
 
 class IndexActionBaseTest < ActionController::TestCase
   include UserTestHelper
 
   def test_expose_all_users_as_instance_variable
-    User.expects(:all).returns([mock_user])
+    User.expects(:scoped).returns([mock_user])
     get :index
     assert_equal [mock_user], assigns(:users)
   end
 
   def test_apply_scopes_if_method_is_available
-    User.expects(:all).returns([mock_user])
+    User.expects(:scoped).returns([mock_user])
     get :index
     assert @controller.scopes_applied
   end
 
   def test_controller_should_render_index
-    User.stubs(:all).returns([mock_user])
+    User.stubs(:scoped).returns([mock_user])
     get :index
     assert_response :success
     assert_equal 'Index HTML', @response.body.strip
@@ -64,11 +70,17 @@ class IndexActionBaseTest < ActionController::TestCase
 
   def test_render_all_users_as_xml_when_mime_type_is_xml
     @request.accept = 'application/xml'
-    User.expects(:all).returns(mock_user)
-    mock_user.expects(:to_xml).returns('Generated XML')
+    User.expects(:scoped).returns(collection = [mock_user])
+    collection.expects(:to_xml).returns('Generated XML')
     get :index
     assert_response :success
     assert_equal 'Generated XML', @response.body
+  end
+
+  def test_scoped_is_called_only_when_available
+    User.stubs(:all).returns([mock_user])
+    get :index
+    assert_equal Array, assigns(:users).class
   end
 end
 
@@ -201,6 +213,14 @@ class UpdateActionBaseTest < ActionController::TestCase
     assert_redirected_to 'http://test.host/'
   end
 
+  def test_redirect_to_the_users_list_if_show_undefined
+    @controller.class.send(:actions, :all, :except => :show)
+    User.stubs(:find).returns(mock_user(:update_attributes => true))
+    @controller.expects(:collection_url).returns('http://test.host/')
+    put :update
+    assert_redirected_to 'http://test.host/'
+  end
+
   def test_show_flash_message_when_success
     User.stubs(:find).returns(mock_user(:update_attributes => true))
     put :update
@@ -229,7 +249,7 @@ end
 
 class DestroyActionBaseTest < ActionController::TestCase
   include UserTestHelper
-  
+
   def test_the_requested_user_is_destroyed
     User.expects(:find).with('42').returns(mock_user)
     mock_user.expects(:destroy).returns(true)

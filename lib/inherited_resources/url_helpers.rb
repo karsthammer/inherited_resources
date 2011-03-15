@@ -32,6 +32,7 @@ module InheritedResources
   # all created when you inherit.
   #
   module UrlHelpers
+    protected
 
     # This method hard code url helpers in the class.
     #
@@ -39,7 +40,7 @@ module InheritedResources
     # is being processed (and even more cheaper when we are using nested
     # resources).
     #
-    # When we are using polymorphic associations, those helpers rely on 
+    # When we are using polymorphic associations, those helpers rely on
     # polymorphic_url Rails helper.
     #
     def create_resources_url_helpers!
@@ -74,6 +75,7 @@ module InheritedResources
 
       collection_ivars    = resource_ivars.dup
       collection_segments = resource_segments.dup
+
 
       # Generate parent url before we add resource instances.
       unless parents_symbols.empty?
@@ -119,9 +121,9 @@ module InheritedResources
       elsif polymorphic
         collection_ivars << '(@_resource_class_new ||= resource_class.new)'
       end
-      
+
       # If route is uncountable then add "_index" suffix to collection index route name
-      # 
+      #
       if !singleton && resource_config[:route_collection_name] == resource_config[:route_instance_name]
         collection_segments << :index
       end
@@ -130,11 +132,49 @@ module InheritedResources
       generate_url_and_path_helpers :new,  :resource,   resource_segments,   new_ivars || collection_ivars
       generate_url_and_path_helpers nil,   :resource,   resource_segments,   resource_ivars
       generate_url_and_path_helpers :edit, :resource,   resource_segments,   resource_ivars
+
+      if resource_config[:custom_actions]
+        [*resource_config[:custom_actions][:resource]].each do | method |
+          generate_url_and_path_helpers method, :resource, resource_segments, resource_ivars
+        end
+        [*resource_config[:custom_actions][:collection]].each do | method |
+          generate_url_and_path_helpers method, :resources, collection_segments, collection_ivars
+        end
+      end
+    end
+
+    def handle_shallow_resource(prefix, name, segments, ivars) #:nodoc:
+      return segments, ivars unless self.resources_configuration[:self][:shallow]
+      case name
+      when :collection, :resources
+        segments = segments[-2..-1]
+        ivars = [ivars.last]
+      when :resource
+        if prefix == :new
+          segments = segments[-2..-1]
+          ivars = [ivars.last]
+        else
+          segments = [segments.last]
+          ivars = [ivars.last]
+        end
+      when :parent
+        segments = [segments.last]
+        ivars = [ivars.last]
+      end
+
+      segments ||= []
+
+      unless self.resources_configuration[:self][:route_prefix].blank?
+        segments.unshift self.resources_configuration[:self][:route_prefix]
+      end
+
+      return segments, ivars
     end
 
     def generate_url_and_path_helpers(prefix, name, resource_segments, resource_ivars) #:nodoc:
-      ivars = resource_ivars.dup
+      resource_segments, resource_ivars = handle_shallow_resource(prefix, name, resource_segments, resource_ivars)
 
+      ivars       = resource_ivars.dup
       singleton   = self.resources_configuration[:self][:singleton]
       polymorphic = self.parents_symbols.include?(:polymorphic)
 

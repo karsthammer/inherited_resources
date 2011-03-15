@@ -20,7 +20,10 @@ module InheritedResources
       #   end
       #
       def collection
-        get_collection_ivar || set_collection_ivar(end_of_association_chain.all)
+        get_collection_ivar || begin
+          c = end_of_association_chain
+          set_collection_ivar(c.respond_to?(:scoped) ? c.scoped : c.all)
+        end
       end
 
       # This is how the resource is loaded.
@@ -38,7 +41,7 @@ module InheritedResources
       # probably render a 500 error message.
       #
       def resource
-        get_resource_ivar || set_resource_ivar(end_of_association_chain.find(params[:id]))
+        get_resource_ivar || set_resource_ivar(end_of_association_chain.send(method_for_find, params[:id]))
       end
 
       # This method is responsable for building the object on :new and :create
@@ -46,7 +49,7 @@ module InheritedResources
       # instance variable.
       #
       def build_resource
-        get_resource_ivar || set_resource_ivar(end_of_association_chain.send(method_for_build, params[resource_instance_name] || {}))
+        get_resource_ivar || set_resource_ivar(end_of_association_chain.send(method_for_build, resource_params))
       end
 
       # Responsible for saving the resource on :create method. Overwriting this
@@ -155,6 +158,10 @@ module InheritedResources
         self.resources_configuration[:self][:instance_name]
       end
 
+      def resource_request_name
+        self.resources_configuration[:self][:request_name]
+      end
+
       # This methods gets your begin_of_association_chain, join it with your
       # parents chain and returns the scoped association.
       #
@@ -193,6 +200,11 @@ module InheritedResources
       #
       def method_for_association_chain #:nodoc:
         resource_collection_name
+      end
+
+      # Returns finder method for instantiate resource by params[:id]
+      def method_for_find
+        resources_configuration[:self][:finder] || :find
       end
 
       # Get resource ivar based on the current resource controller.
@@ -265,6 +277,31 @@ module InheritedResources
         []
       end
 
+      # URL to redirect to when redirect implies resource url.
+      def smart_resource_url
+        url = nil
+        if respond_to? :show
+          url = resource_url rescue nil
+        end
+        url ||= smart_collection_url
+      end
+
+      # URL to redirect to when redirect implies collection url.
+      def smart_collection_url
+        url = nil
+        if respond_to? :index
+          url ||= collection_url rescue nil
+        end
+        if respond_to? :parent
+          url ||= parent_url rescue nil
+        end
+        url ||= root_url rescue nil
+      end
+
+      # extract attributes from params
+      def resource_params
+        params[resource_request_name] || params[resource_instance_name] || {}
+      end
   end
 end
 
