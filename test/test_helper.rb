@@ -21,7 +21,7 @@ class ApplicationController < ActionController::Base; end
 
 # Add IR to load path and load the main file
 $:.unshift File.expand_path(File.dirname(__FILE__) + '/../lib')
-require 'inherited_resources'
+require 'karsthammer-inherited_resources'
 
 ActionController::Base.view_paths = File.join(File.dirname(__FILE__), 'views')
 
